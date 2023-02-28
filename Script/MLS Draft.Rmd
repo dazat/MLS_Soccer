@@ -586,6 +586,7 @@ Club_spend_plot + transition_time(Year)
 
 ```
 
+
 ```{r, fig.width=12, fig.height=10, message=FALSE, warning=FALSE}
 sal_sum_plot <- Players_all_17_20_Reg %>%
   filter(Club != "Retired" & Club != "Major League Soccer") %>%
@@ -604,6 +605,22 @@ sal_sum_plot + transition_time(Year)
               
 
 ```
+
+```{r, fig.width=12, fig.height=10, message=FALSE, warning=FALSE}
+
+Players_all_17_20_Reg <- Players_all_17_20_Reg %>%
+  filter(Club != "Retired" & Club != "Major League Soccer") %>%
+  group_by(Year, Club) %>%
+  mutate(`Club avg` = mean(`Total Comp`)) 
+
+Players_all_17_20_Reg <- Players_all_17_20_Reg %>%
+  filter(Club != "Retired" & Club != "Major League Soccer") %>%
+  group_by(Year, Club) %>%
+  mutate(`Club total` = sum(`Total Comp`)) 
+
+# I would like to add a frequency count of player nationality by club, but have not gotten it correctly yet
+```
+
 
 ```{r, fig.width=12, fig.height=10, message=FALSE, warning=FALSE}
 Players_all_17_20_Reg %>%
@@ -757,7 +774,7 @@ The United States, Argentina, Brazil, and Canada all have the most players in th
 ```{r, fig.width=14, fig.height=8, message=FALSE, warning=FALSE}
 
 
-Players_all_17_20_Reg_Nation %>%
+nation_plot <- Players_all_17_20_Reg_Nation %>%
   filter(Club != "Retired" & Club != "Major League Soccer" & country_name != "NA") %>%
   group_by(country_name) %>%
   ggplot(aes(x = country_comp, y = reorder(country_name, country_comp))) +
@@ -769,13 +786,13 @@ Players_all_17_20_Reg_Nation %>%
   theme(axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))
 
 
-
+nation_plot
 
 ```
 
 ```{r, fig.width=12, fig.height=10, message=FALSE, warning=FALSE}
 
-Players_all_17_20_Reg_Nation %>%
+nation_plot <- Players_all_17_20_Reg_Nation %>%
   filter(Club != "Retired" & Club != "Major League Soccer" & country_name != "NA" & n >= 15) %>%
   group_by(country_name) %>%
   ggplot(aes(x = country_comp, y = reorder(country_name, country_comp))) +
@@ -785,6 +802,8 @@ Players_all_17_20_Reg_Nation %>%
   coord_flip() +
   labs(x = "Average Wages", y = "", title = "Average wages by country (With at least 15 players in the league)") +
   theme(axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))
+
+nation_plot
 
 ```
 
