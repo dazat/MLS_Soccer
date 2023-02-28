@@ -587,18 +587,19 @@ Club_spend_plot + transition_time(Year)
 ```
 
 ```{r, fig.width=12, fig.height=10, message=FALSE, warning=FALSE}
-Players_all_17_20_Reg %>%
+sal_sum_plot <- Players_all_17_20_Reg %>%
   filter(Club != "Retired" & Club != "Major League Soccer") %>%
   group_by(Year, Club) %>%
   summarize(Club_sum = sum(`Total Comp`)) %>%
-  ggplot(aes(x = Club_sum, y = reorder(Club, Club_avg))) +
+  ggplot(aes(x = Club_sum, y = reorder(Club, Club_sum))) +
   geom_col(aes(fill = Club), position = "dodge", show.legend = FALSE) +
   theme_minimal() +
-  facet_wrap(~Year) +
   scale_fill_viridis_d(option = "magma") +
   coord_flip() +
   labs(x = "Sum Total Compensation", y = "", title = "Total Compensation of Player Wages by Club (By Year: 2017-2020)") +
   theme(axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))
+
+sal_sum_plot + transition_time(Year)
   
               
 
@@ -609,14 +610,13 @@ Players_all_17_20_Reg %>%
   filter(Club != "Retired" & Club != "Major League Soccer") %>%
   group_by(Club) %>%
   summarize(Club_sum = sum(`Total Comp`)) %>%
-  ggplot(aes(x = Club_sum, y = reorder(Club, Club_avg))) +
+  ggplot(aes(x = Club_sum, y = reorder(Club, Club_sum))) +
   geom_col(aes(fill = Club), position = "dodge", show.legend = FALSE) +
   theme_minimal() +
   scale_fill_viridis_d() +
   coord_flip() +
   labs(x = "Total Wages", y = "", "Total ", title = "Total wages across years by Club") +
   theme(axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))
-  
               
 
 ```
