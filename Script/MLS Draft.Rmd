@@ -598,9 +598,10 @@ sal_sum_plot <- Players_all_17_20_Reg %>%
   scale_fill_viridis_d(option = "magma") +
   coord_flip() +
   labs(x = "Sum Total Compensation", y = "", title = "Total Compensation of Player Wages by Club (By Year: 2017-2020)") +
-  theme(axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))+
+  transition_time(Year)
 
-sal_sum_plot + transition_time(Year)
+sal_sum_plot 
   
               
 

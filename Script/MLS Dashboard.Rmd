@@ -2,58 +2,462 @@
 title: "MLS Player Dashboard"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
+    orientation: rows
     vertical_layout: scroll
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 library(flexdashboard)
-```
-Page 1
-=========================
+library(tidyverse)
+library(rio)
+library(gt)
+library(here)
+library(psych)
+library(stringi)
+library(ggpubr)
+library(DT)
+library(readxl)
+library(plotly)
+library(forcats)
+library(ggthemes)
+library(gganimate)
+library(gifski)
 
-Column {data-width=10}
+# Importing the original dataset
+MLS_GK <- import(here("Data/MLS/all_goalkeepers.csv"))
+MLS_Players <- import(here("Data/MLS/all_players.csv"))
+
+
+# All players that had at least 1 minute of game time
+Active_Players <- MLS_Players %>%
+  filter(MINS != 0)
+
+Active_Players$Player <- stri_trans_general(Active_Players$Player, id = "Latin-ASCII")
+
+Active_Players$Player <- gsub("-", "", Active_Players$Player)
+
+
+# As the name states. Goalkeepers with more than one minute of game time.
+Active_Gk <- MLS_GK %>%
+  filter(MINS != 0)
+
+Active_Gk$Player <- stri_trans_general(Active_Gk$Player, id = "Latin-ASCII")
+
+Active_Gk$Player <- gsub("-", "", Active_Gk$Player)
+
+###############################################################################
+
+# Weird, there is no club with the abbreviation LFC in the MLS. I looked into it and it looks like it is actually meant to be LAFC. So I will mutate the cases of LFC to LAFC.
+
+Active_Players$Club <-replace(Active_Players$Club, Active_Players$Club == "LFC", "LAFC")
+Active_Players$Club <-replace(Active_Players$Club, Active_Players$Club == "NY", "NYC")
+Active_Players$Club <-replace(Active_Players$Club, Active_Players$Club == "MCF", "MTL")
+
+################################################################################
+
+# Let's change the Position to factors. 
+Active_Players$POS <- as.factor(Active_Players$POS)
+Active_Players$Club <- as.factor(Active_Players$Club)
+
+###############################################################################
+
+### Need to merge GK and Player data-sets for salary
+MLS_Players17_20 <- MLS_Players %>% filter(Year == 2017 | Year == 2018 | Year == 2019 | Year == 2020)
+
+MLS_Players17_20 <- MLS_Players17_20 %>% select(-c("Club","GWG", "PKG/A", "GWA"))
+
+MLS_GK17_20 <- MLS_GK %>% filter(Year == 2017 | Year == 2018 | Year == 2019 | Year == 2020)
+
+MLS_GK17_20 <- MLS_GK17_20 %>% select(-c("Club", "PKG/A", "W", "L", "T", "W%"))
+
+
+Players_all_17_20 <- merge(MLS_Players17_20, MLS_GK17_20, by = c("Player", "POS", "MINS","GP", "GS", "Year", "Season"), all = TRUE)
+
+Players_all_17_20$Player <- stri_trans_general(Players_all_17_20$Player, id = "Latin-ASCII")
+
+Players_all_17_20$Player <- gsub("-", "", Players_all_17_20$Player)
+
+###############################################################################
+
+
+### Reading in the 2019 player salaries
+sal_19 <- read_xlsx(here("Data/Salary 19.xlsx"), skip = 1)
+
+### Adjusting the column names
+fix <- c(Base_Salary_19 = "Base Salary 19", Total_Comp_19 = "Base Guaranteed Comp 19")
+sal_19 <- rename(sal_19, all_of(fix))
+
+### Combining first and last name to create a combined player name
+sal_19$Player <- apply(sal_19[, c("First Name", "Last Name")], 1,
+                      function(i){ paste(na.omit(i), collapse = " ") })
+
+### Removing accents from names as the original list to merge to does not have accents
+sal_19$Player <- stri_trans_general(sal_19$Player, id = "Latin-ASCII")
+
+### Removing hyphens between names
+sal_19$Player <- gsub("-", "", sal_19$Player)
+
+### Selecting only club, salary, and name
+sal_19 <- sal_19 %>% select(c("Club", "Base_Salary_19", "Total_Comp_19", "Player"))
+
+# 2019 Salaries are in, but let's add in 2017, 2018, and 2020
+###############################################################################
+### Importing and cleaning 2017 salaries
+sal_17 <- read_xlsx(here("Data/Salary 17.xlsx"), skip = 1, col_names = TRUE)
+### Fixing weird spacing in the name column that caused errors
+fix <- c(First_Name = "First Name", Last_Name = "Last Name", Base_Salary_17 = "Base Salary", Total_Comp_17 = "Compensation")
+sal_17 <- rename(sal_17, all_of(fix))
+
+### Combining first and last name while ignoring NAs
+sal_17$Player <- apply(sal_17[, c("First_Name", "Last_Name")], 1,
+                      function(i){ paste(na.omit(i), collapse = " ") })
+
+### Removing any accent marks in names to combine with existing data
+sal_17$Player <- stri_trans_general(sal_17$Player, id = "Latin-ASCII")
+
+### Remove dash from names to match with original data
+sal_17$Player <- gsub("-", "", sal_17$Player)
+
+### Selecting only club, salary, and name
+sal_17 <- sal_17 %>% select(c("Club", "Base_Salary_17", "Total_Comp_17", "Player"))
+
+
+###############################################################################
+### Importing 2018 player salaries
+sal_18 <- read_xlsx(here("Data/Salary 18.xlsx"))
+
+### Fixing column names
+fix <- c(First_Name = "First Name", Last_Name = "Last Name", Base_Salary_18 = "Salary ", Total_Comp_18 = "Compensation ")
+sal_18 <- rename(sal_18, all_of(fix))
+
+sal_18$Player <- apply(sal_18[, c("First_Name", "Last_Name")], 1,
+                      function(i){ paste(na.omit(i), collapse = " ") })
+
+### Removing any accent marks in names to combine with existing data
+sal_18$Player <- stri_trans_general(sal_18$Player, id = "Latin-ASCII")
+
+### Remove dash from names to match original data
+sal_18$Player <- gsub("-", "", sal_18$Player)
+
+### Selecting only club, salary, and name
+sal_18 <- sal_18 %>% select(c("Club", "Base_Salary_18", "Total_Comp_18", "Player"))
+
+### Changing the salary to numeric from character
+sal_18$Base_Salary_18 <- as.numeric(sal_18$Base_Salary_18)
+
+sal_18$Total_Comp_18 <- as.numeric(sal_18$Total_Comp_18)
+
+
+
+###############################################################################
+### Importing 2020 Player salaries
+sal_20 <- read_xlsx(here("Data/Salary 20.xlsx"))
+
+fix <- c(Base_Salary_20 = "Base Salary 20", Total_Comp_20 = "Base Guaranteed Comp 20")
+sal_20 <- rename(sal_20, all_of(fix))
+
+sal_20$Player <- apply(sal_20[, c("First Name", "Last Name")], 1,
+                      function(i){ paste(na.omit(i), collapse = " ") })
+
+sal_20$Player <- stri_trans_general(sal_20$Player, id = "Latin-ASCII")
+
+sal_20 <- sal_20 %>% select(-contains('...6'))
+
+### Remove dash from names to match original data
+sal_20$Player <- gsub("-", "", sal_20$Player)
+
+### Selecting only club, salary, and name
+sal_20 <- sal_20 %>% select(c("Club", "Base_Salary_20", "Total_Comp_20", "Player"))
+
+
+
+
+###############################################################################
+# I am sure there is a better way but I don't know how
+### Combining 2017 and 2018 data
+Salaries <- merge(sal_17, sal_18, by = "Player", all = TRUE)
+
+### Fixing the club column names
+fix <- c(Club_17 = "Club.x", Club_18 = "Club.y")
+Salaries <- rename(Salaries, all_of(fix))
+
+### Adding in the 2019 salaries
+Salaries <- merge(Salaries, sal_19, by = "Player", all = TRUE)
+
+### Adding in the 2020 salaries
+Salaries <- merge(Salaries, sal_20, by = "Player", all = TRUE)
+
+### Fixing the club column names again
+fix <- c(Club_19 = "Club.x", Club_20 = "Club.y")
+Salaries <- rename(Salaries, all_of(fix))
+
+### Selecting just the club information
+Player_Club <- Salaries %>% select("Player", "Club_17", "Club_18", "Club_19", "Club_20")
+
+### Making the club data longer
+Player_Club_long <- Player_Club %>% pivot_longer(cols  = -Player, names_to = c("Club", "Year"), 
+    names_sep = "\\.")
+
+### Separating the club column by year
+Player_Club_long <- Player_Club_long %>%
+  separate(Club, c('Club', 'Year'), sep = "(.*)_()")
+
+### Adding 20 infront of the years
+Player_Club_long$Year <- sub("^", "20", Player_Club_long$Year)
+
+### Making year numeric
+Player_Club_long$Year <- as.numeric(Player_Club_long$Year)
+
+### selecting only a few columns
+Player_Club_long <- Player_Club_long %>% select("Player", "Year", "value")
+
+### Changing the column name to club
+Player_Club_long <- rename(Player_Club_long, Club = "value")
+
+### Removing players with NA values for club meaning they did not play in the league that year
+Player_Club_long <- Player_Club_long %>% filter(Club != "NA")
+
+#################################################################
+
+### Salaries needs to be in long format in order to be merged 
+### Selecting just the salary data
+Salaries_long <- Salaries %>% select("Player", "Base_Salary_17", "Total_Comp_17", "Base_Salary_18", "Total_Comp_18", "Base_Salary_19", "Total_Comp_19", "Base_Salary_20", "Total_Comp_20")
+
+### pivoting longer by salary type
+Salaries_long <- Salaries_long %>% pivot_longer(cols  = -Player, names_to = c("Salary", "Year"), 
+    names_sep = "\\.")
+
+### separating column by year
+Salaries_long <- Salaries_long %>%
+  separate(Salary, c('Salary', 'Year'), sep = "()_(.*)_()")
+
+### adding 20 in front of years to make it match with original data
+Salaries_long$Year <- sub("^", "20", Salaries_long$Year)
+
+### Making year numeric
+Salaries_long$Year <- as.numeric(Salaries_long$Year)
+
+
+  
+###############################################################################
+
+### Combining the salaries into the active players list by Player name
+Players_all_17_20 <- left_join(Players_all_17_20, Salaries_long, by = c("Player", "Year"))
+
+
+### Simplifying the position factor to three variables
+Players_all_17_20$POS <- fct_collapse(Players_all_17_20$POS, M = c("M","M-F", "M-D"), D = c("D","D-M"), F = c("F-M", "F"), Gk = "GK")
+
+### Finally I need to rename some columns
+fix <- c(Games = "GP", Starts = "GS", Goals = "G", Assists = "A", Shots = "SHTS.x", `Shots On Goal` = "SOG", `Home Goals` = "HmG", `Away Goals` = "RdG", `Goals/90` = "G/90min", `Home Assists` = "HmA", `Away Assists` = "RdA", `Scoring Percent` = "SC%", `Assists/90` = "A/90min", Fouls= "FC", `Fouls Suffered` = "FS", Offsides = "OFF", `Yellow Cards` = "YC", `Red Cards` = "RC", `Shots Faced` = "SHTS.y", Saves = "SV", `Goals Against` = "GA", `Goals Against Avg` = "GAA", Shoutouts = "ShO", `Save Pct` = "Sv%")
+Players_all_17_20 <- rename(Players_all_17_20, all_of(fix))
+
+
+# Now, I need to add in the correct club information because in this review I realized that the club info in the original dataset was incorrect. To do this I am going to remove the Club column and merge in the player club dataset I took from the player salaries.
+
+Players_all_17_20 <- left_join(Players_all_17_20, Player_Club_long, by = c("Player", "Year"))
+
+
+###############################################################################
+
+# I realized I need to pivot the salary data into a wider format
+
+Players_all_17_20 <- Players_all_17_20 %>%
+  pivot_wider(
+    names_from = Salary,
+    values_from = value)
+
+### For some reason there is a weird empty column now. I am sure I probably pivoted incorrectly, but I am just going to delete the extra column because that seems easier since I have the data in the right place
+
+Players_all_17_20 <- Players_all_17_20 %>% select(-c("NA"))
+
+fix <- c(`Base Salary` = "Base", `Total Comp` = "Total")
+Players_all_17_20 <- rename(Players_all_17_20, all_of(fix))
+
+# Much cleaner!
+
+
+#####################################################################
+
+# I am still deciding if I need/want to include percent change in salary
+
+### Adding in salary change amount
+Players_all_17_20$Difference <- (Players_all_17_20$`Total Comp`-Players_all_17_20$`Base Salary`)
+
+### Adding salary percent change by season
+Players_all_17_20$Pct_Difference <- round(((Players_all_17_20$Difference)/(Players_all_17_20$`Total Comp`))*100,digits=2)
+
+### Creating a subset of regular season games
+Players_all_17_20_Reg <- Players_all_17_20 %>%
+  filter(Season == "reg")
+
+
+
+```
+
+Club Overview
+=======================================================================
+
+Row {data-width=350}
 -----------------------------------------------------------------------
 
-### Chart A
+### Active Players 2020 {.no-padding}
 
-Column {data-width=10}
+```{r}
+Active_Players %>%
+  filter(Year == 2020, Club != "")%>%
+  count(Club) %>%
+  mutate(Club = fct_reorder(Club, desc(n))) %>%
+  ggplot()+
+  geom_col(aes(x = n, y = Club, fill = Club), show.legend = FALSE)+
+  theme_minimal()+
+  labs(x = "Number of Players", y = "", title="Active Players by Team in 2020")+
+  scale_x_continuous(name="Number of Active Field Players", breaks=seq(0,30,3))+
+  scale_fill_viridis_d()
+```
+
+### Active Players 2019 {.no-padding}
+
+```{r}
+Active_Players %>%
+  filter(Year == 2019, Club != "")%>%
+  count(Club) %>%
+  mutate(Club = fct_reorder(Club, desc(n))) %>%
+  ggplot()+
+  geom_col(aes(x = n, y = Club, fill = Club), show.legend = FALSE)+
+  theme_minimal()+
+  labs(x = "Number of Players", y = "", title="Active Players by Team in 2019")+
+  scale_x_continuous(name="Number of Active Field Players", breaks=seq(0,30,3))+
+  scale_fill_viridis_d()
+
+
+```
+
+
+Row {data-width=350}
 -----------------------------------------------------------------------
 
-### Chart B
+### Active Players by team in 2018
 
 ```{r}
-#Column widths are relative sizes. In theory you can use either rows or columns but I dont think you can use both.
+Active_Players %>%
+  filter(Year == 2018, Club != "" & Club != "NSH" & Club != "MIA" & Club != "CIN")%>%
+  count(Club) %>%
+  mutate(Club = fct_reorder(Club, desc(n))) %>%
+  ggplot()+
+  geom_col(aes(x = n, y = Club, fill = Club), show.legend = FALSE)+
+  theme_minimal()+
+  labs(x = "Number of Players", y = "", title="Active Players by Team in 2018")+
+  scale_x_continuous(name="Number of Active Field Players", breaks=seq(0,30,3))+
+  scale_fill_viridis_d()
+
+
 ```
 
-Column {data-width=10}
+### Active Players by team in 2017
+
+```{r}
+Active_Players %>%
+  filter(Year == 2017, Club != "" & Club != "NSH" & Club != "LAFC" & Club != "MIA" & Club != "CIN")%>%
+  count(Club) %>%
+  mutate(Club = fct_reorder(Club, desc(n))) %>%
+  ggplot()+
+  geom_col(aes(x = n, y = Club, fill = Club), show.legend = FALSE)+
+  theme_minimal()+
+  labs(x = "Number of Players", y = "", title="Active Players by Team in 2017")+
+  scale_x_continuous(name="Number of Active Field Players", breaks=seq(0,30,3))+
+  scale_fill_viridis_d()
+```
+
+
+Goals 
+=======================================================================
+
+Row {data-width=650}
+-------------------------------------
+
+### Goals per 90 mins in 2019
+```{r}
+Players_all_17_20 <- Players_all_17_20 %>%
+  group_by(Player) %>%
+  add_count(Player)
+
+options(scipen = 999)
+
+
+
+sal_19_plot <- Players_all_17_20 %>%
+  filter(Year == 2019 & Season == "reg" & POS != "Gk" & `Goals/90` != 0) %>%
+  ggplot(aes(x = `Goals/90`, y = `Total Comp`), label = Player) +
+  geom_point(aes(color = POS, text = Player), show.legend = T) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Goals per 90 by Total Compensation in 2019", x = "Total Compensation in $Dollars", y = "Goals per 90 minutes played") +
+  scale_x_log10(n.breaks = 8) +
+  xlim(0,4)
+
+sal_19_plot + stat_cor(aes(x = `Goals/90`, y = `Total Comp`), data = Players_all_17_20, label.y = 10000, label.x = 4.2,  p.accuracy = 0.001)
+
+ggplotly(sal_19_plot, tooltip = c("Player", "Total Comp", "Goals/90")) %>% layout(legend.title = "Position")
+
+## I can't figure out the legend in plotly.
+
+```
+
+Row {data-width=350}
+--------------------------------------
+
+### Goals by compensation in 2019
+```{r}
+sal_19_plot3 <- Players_all_17_20 %>%
+  filter(Season == "reg" & POS != "Gk" & Goals != 0) %>%
+  select(Player, Goals, `Total Comp`, POS, MINS, Year) %>%
+  ggplot(aes(x = Goals, y = `Total Comp`), label = Player) +
+  geom_point(aes(color = POS, text = Player), show.legend = T) +
+  coord_flip() +
+  facet_wrap(~Year, nrow = 4) +
+  theme_minimal() +
+  labs(title = "Goals by Total Compensation in 2019") +
+  scale_x_log10(n.breaks = 8)
+
+ggplotly(sal_19_plot3, tooltip = c("Player", "Total Comp", "Goals", "Year"))
+
+```
+
+Row {data-width=350}
 -----------------------------------------------------------------------
 
-### Chart C
-
+### Assists per 90minutes played by compensation in 2019
 ```{r}
+sal_19_plot2 <- Players_all_17_20 %>%
+  filter(Year == 2019 & Season == "reg" & POS != "Gk" & `Assists/90` != 0) %>%
+  ggplot(aes(x = `Assists/90`, y = `Total Comp`), label = Player) +
+  geom_point(aes(color = POS, text = Player), show.legend = T) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Assists per 90 by total compensation in 2019") +
+  scale_x_log10(n.breaks = 8) +
+  xlim(0,1.5)
+
+ggplotly(sal_19_plot2, tooltip = c("Player", "Total Comp", "Assists/90", "MINS"))
 
 ```
 
-### Chart D
+Row {data-width=350}
+-------------------------------------------------------------------------
 
+### Assists by compensation in 2019
 ```{r}
+sal_19_plot2 <- Players_all_17_20 %>%
+  filter(Year == 2019 & Season == "reg" & POS != "Gk" & Assists != 0) %>%
+  ggplot(aes(x = `Assists`, y = `Total Comp`), label = Player) +
+  geom_point(aes(color = POS, text = Player), show.legend = T) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Assists by total compensation in 2019") +
+  scale_x_log10(n.breaks = 8)
+
+ggplotly(sal_19_plot2, tooltip = c("Player", "Total Comp", "Assists", "MINS"))
+
 
 ```
-
-
-Page 2
-=================
-
-Column 1
-----------------------
-
-### Chart A
-
-Page 3
-==================
-
-Row 1
--------------------
-
-### Chart A
