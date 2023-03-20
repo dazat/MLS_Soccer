@@ -4,6 +4,10 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: scroll
+    theme: united
+    source_code: embed
+    runtime: shiny
+
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
@@ -23,6 +27,7 @@ library(ggthemes)
 library(gganimate)
 library(gifski)
 library(countrycode)
+library(shiny)
 
 # Importing the original dataset
 MLS_GK <- import(here("Data/MLS/all_goalkeepers.csv"))
@@ -477,18 +482,26 @@ Players_all_17_20_Reg %>%
 
 ```
 
+Row {data-height=250}
+-------------------------------------------------------------------------------
+
+### A Note on Clubs  
+Inter Miami and Nashville had their inaugural seasons in 2020.  
+
+Cincinnati had their first season in the MLS in 2019.  
+
+LAFC began life in the MLS during the 2018 season.   
+
+Finally, Minnesota and Atlanta United joined the league in 2017.  
+
+>*This data is average across the 2017-2020 seasons of the MLS based on player salaries from the Player's Association Annual Report.  
 
 Goals 
 ======================================================================
 
-Row {data-height=1200}
+Row {data-height=1350}
 -------------------------------------
 
-```{r}
-
-#I would like to add goals by team as well here. 
-
-```
 
 ### Regular Season Goals per 90 mins (2017 - 2020)
 ```{r}
@@ -502,12 +515,12 @@ options(scipen = 999)
 
 sal_19_plot <- Players_all_17_20 %>%
   filter(Season == "reg" & POS != "Gk" & `Goals/90` != 0) %>%
-  ggplot(aes(x = `Goals/90`, y = `Total Comp`), label = Player) +
+  ggplot(aes(x = `Goals/90`, y = log10(`Total Comp`)), label = Player) +
   geom_point(aes(color = POS, text = Player), show.legend = T) +
   coord_flip() +
-  facet_wrap(~Year, nrow = 4) +
+  facet_wrap(~Year, nrow = 4, scales = 'free_x') +
   theme_minimal() +
-  labs(title = "Goals per 90 by Total Compensation", y = "Total Compensation (In $USD)", x = "Goals per 90 minutes played") +
+  labs(title = "Forward and Midfielders are paid more and score more", subtitle = "Goals per 90 by Total Compensation", y = "Log of Total Compensation (In $USD)", x = "Goals per 90 minutes played") +
   scale_x_log10(n.breaks = 8) +
   xlim(0,4)
 
@@ -519,7 +532,14 @@ ggplotly(sal_19_plot, tooltip = c("Player", "Total Comp", "Goals/90")) %>% layou
 
 ```
 
-Row {data-height=1200}
+Row {data-height=150}
+-------------------------------------------------------------------------------
+
+### Note on the plot:  
+The positions can be filtered out by clicking on the legend. log of total compensation was used to create a more normal distribution for ease of viewing the data. Exact salaries can be searched in the data table tab.  
+
+
+Row {data-height=1350}
 --------------------------------------
 
 ### Regular Season Goals by compensation (2017 - 2020)
@@ -527,12 +547,12 @@ Row {data-height=1200}
 sal_19_plot3 <- Players_all_17_20 %>%
   filter(Season == "reg" & POS != "Gk" & Goals != 0) %>%
   select(Player, Goals, `Total Comp`, POS, MINS, Year) %>%
-  ggplot(aes(x = Goals, y = `Total Comp`), label = Player) +
+  ggplot(aes(x = Goals, y = log10(`Total Comp`)), label = Player) +
   geom_point(aes(color = POS, text = Player), show.legend = T) +
   coord_flip() +
-  facet_wrap(~Year, nrow = 4) +
+  facet_wrap(~Year, nrow = 4, scales = 'free_x') +
   theme_minimal() +
-  labs(title = "Goals by Total Compensation", y = "Total Compensation (In $USD)") +
+  labs(title = "More money, more goals (Usually)", subtitle = "Goals by Total Compensation", y = "Log of Total Compensation (In $USD)") +
   scale_x_log10(n.breaks = 8)
 
 ggplotly(sal_19_plot3, tooltip = c("Player", "Total Comp", "Goals", "Year"))
@@ -543,23 +563,20 @@ ggplotly(sal_19_plot3, tooltip = c("Player", "Total Comp", "Goals", "Year"))
 Assists 
 =======================================================================
 
-Row {data-height=1200}
+Row {data-height=1350}
 -----------------------------------------------------------------------
-```{r}
-#I would like to add assists by team as well here. 
 
-```
 
 ### Regular Season Assists per 90 minutes played by compensation (2017-2020)
 ```{r}
 sal_19_plot2 <- Players_all_17_20 %>%
   filter(Season == "reg" & POS != "Gk" & `Assists/90` != 0) %>%
-  ggplot(aes(x = `Assists/90`, y = `Total Comp`), label = Player) +
+  ggplot(aes(x = `Assists/90`, y = log10(`Total Comp`)), label = Player) +
   geom_point(aes(color = POS, text = Player), show.legend = T) +
   coord_flip() +
-  facet_wrap(~Year, nrow = 4) +
+  facet_wrap(~Year, nrow = 4, scales = 'free_x') +
   theme_minimal() +
-  labs(title = "Assists per 90 by total compensation", y = "Total Compensation (In $USD)") +
+  labs(title = "Midfielders tend to assist more" , subtitle = "Assists per 90 by total compensation", y = "Log of Total Compensation (In $USD)") +
   scale_x_log10(n.breaks = 8) +
   xlim(0,1.5)
 
@@ -567,19 +584,26 @@ ggplotly(sal_19_plot2, tooltip = c("Player", "Total Comp", "Assists/90", "MINS")
 
 ```
 
-Row {data-height=1200}
+Row {data-height=150}
+-------------------------------------------------------------------------------
+
+### Note on the plot:  
+Positions can be filtered out by clicking on the position name in the legend. The salary data is shown in the log of total compensation for ease of viewing the data but full salary information can be found on the data table tab.  
+
+
+Row {data-height=1350}
 -------------------------------------------------------------------------
 
 ### Regular Season Assists by compensation (2017-2020)
 ```{r}
 sal_19_plot2 <- Players_all_17_20 %>%
   filter(Season == "reg" & POS != "Gk" & Assists != 0) %>%
-  ggplot(aes(x = `Assists`, y = `Total Comp`), label = Player) +
+  ggplot(aes(x = `Assists`, y = log10(`Total Comp`)), label = Player) +
   geom_point(aes(color = POS, text = Player), show.legend = T) +
   coord_flip() +
-  facet_wrap(~Year, nrow = 4) +
+  facet_wrap(~Year, nrow = 4, scales = 'free_x') +
   theme_minimal() +
-  labs(title = "Assists by total compensation", y = "Total Compensation (In $USD)") +
+  labs(title = "Assists by total compensation", y = "Log of Total Compensation (In $USD)") +
   scale_x_log10(n.breaks = 8)
 
 ggplotly(sal_19_plot2, tooltip = c("Player", "Total Comp", "Assists", "MINS"))
@@ -605,7 +629,7 @@ foul_plot
 
 ```
 
-Row {data-height=1200}
+Row {data-height=1350}
 -------------------------------------------------------------------------------
 
 ### Fouls Suffered by Total Compensation (2017-2020)
@@ -615,9 +639,9 @@ sal_plot <- Players_all_17_20_Reg %>%
   filter(POS != "GK") %>%
   group_by("POS") %>%
   ggplot() +
-  geom_point(aes(x = `Total Comp`, y = `Fouls Suffered`, color = POS, text = Player), show.legend = T) +
-  facet_wrap(~Year, nrow = 4) +
-  labs(title = "Fouls Suffered by Salary", subtitle = "Position, not salary determine fouls suffered", x = "Total Compensation (In $USD)", y = "Fouls SUffered") + 
+  geom_point(aes(x = log10(`Total Comp`), y = `Fouls Suffered`, color = POS, text = Player), show.legend = T) +
+  facet_wrap(~Year, nrow = 4, scales = 'free_x') +
+  labs(title = "Was Nicholas Lodeiro targeted?" , subtitle = "Fouls Suffered by Salary", x = "Log of Total Compensation (In $USD)", y = "Fouls SUffered") + 
   theme_minimal()
 
 ggplotly(sal_plot, tooltip = c("Player", "Fouls Suffered"))
@@ -626,7 +650,14 @@ ggplotly(sal_plot, tooltip = c("Player", "Fouls Suffered"))
 
 ```
 
-Row {data-height=1200}
+Row {data-height=150}
+----------------------------------------------------------------------------
+
+### Note about the Plot:  
+Total compensation is shown as the log of salary for ease for reading and for normalizing the data. Specific compensation information by player can be found in the data table tab.   
+
+
+Row {data-height=1350}
 -------------------------------------------------------------------------------
 
 ### Fouls by Salary (2017-2020)
@@ -636,9 +667,9 @@ sal_plot <- Players_all_17_20_Reg %>%
   filter(POS != "GK") %>%
   group_by("POS") %>%
   ggplot() +
-  geom_point(aes(x = `Total Comp`, y = `Fouls`, color = POS, text = Player), show.legend = T) +
-  facet_wrap(~Year, nrow = 4) +
-  labs(title = "Fouls by Salary", subtitle = "Position, not salary determine fouls", x = "Total Compensation (In $USD)", y = "Fouls") +
+  geom_point(aes(x = log10(`Total Comp`), y = `Fouls`, color = POS, text = Player), show.legend = T) +
+  facet_wrap(~Year, nrow = 4, scales = 'free_x') +
+  labs(title = "Fouls by Salary", subtitle = "Position, not salary determine fouls", x = "Log of Total Compensation (In $USD)", y = "Fouls") +
   theme_minimal()
 
 ggplotly(sal_plot, tooltip = c("Player", "Fouls"))
@@ -659,7 +690,7 @@ sal_plot <- Players_all_17_20_Reg %>%
   ggplot() +
   geom_point(aes(x = `Fouls Suffered`, y = `Fouls`, color = POS, text = Player), show.legend = T, position = "jitter") +
   theme_minimal()+
-  labs(title = "Fouls by Fouls Suffered", x = "Fouls Suffered", y = "Fouls")
+  labs(title = "The midfield battle of the foulers and the fouled" , subtitle = "Fouls by Fouls Suffered", x = "Fouls Suffered", y = "Fouls")
 
 ggplotly(sal_plot, tooltip = c("Player", "Fouls", "Fouls Suffered"))
 
@@ -671,7 +702,7 @@ ggplotly(sal_plot, tooltip = c("Player", "Fouls", "Fouls Suffered"))
 Nationality
 =============================================================================
 
-Row {data-height=800}
+Row {data-height=1000}
 -------------------------------------------------------------------------
 
 ### Player Nationality
@@ -683,20 +714,26 @@ options(scipen = 999)
 ## Plot of player average minutes and average comp by country
 nation_player_plot <- Players_all_17_20_Reg_Nation %>%
   group_by(Player, Year) %>%
-  ggplot(aes(x = round(country_mins, 0), y = country_comp)) + 
-  geom_point(aes(size = n, text = country_name), colour = ifelse(Players_all_17_20_Reg_Nation$n > 20,"darkorchid","gray"), alpha = 0.5) +
-  geom_text(data = Players_all_17_20_Reg_Nation |> dplyr::filter(n > 20),
-            aes(label = country_name), check_overlap = TRUE, nudge_y = 0.1, nudge_x = -0.12) +
+  ggplot(aes(x = round(country_mins, 0), y = log10(country_comp))) + 
+  geom_point(aes(size = n, text = country_name), colour = ifelse(Players_all_17_20_Reg_Nation$n > 15,"darkorchid","gray"), alpha = 0.5) +
+  geom_text(data = Players_all_17_20_Reg_Nation |> dplyr::filter(n > 15),
+            aes(label = country_name), check_overlap = TRUE, nudge_y = 0.06, nudge_x = -0.12) +
   scale_size_binned(name = "Players per Country", breaks = c(5,15,30,50)) +
   theme_minimal() +
   labs(x = "Average Minutes played per season by country", 
-       y = "Average Total compensation by country") +
+       y = "Log of Average Total compensation by country") +
   theme(legend.position = 'bottom') +
   labs(title = "South American players tend to earn more", subtitle = "Average Player minutes by Average Total Compensation with player nationality")
 
-ggplotly(nation_player_plot, tooltip = c("country_name", "n"))
+ggplotly(nation_player_plot, tooltip = c("country_name", "n", "country_comp"))
 
 ```
+
+Row {data-height=200}
+-------------------------------------------------------------------------------
+
+### A Note about the Plot:  
+The US and Jamaica are over lapping for their labels and do not want to be separated.  
 
 
 ```{r, eval=FALSE, include=FALSE}
@@ -741,10 +778,59 @@ Players_all_17_20_Reg_Nation_Search <- Players_all_17_20_Reg_Nation %>%
   select(-c(35:39, 41:48))
 
 col_order <- c("Player", "Year", "country_name", "Club", "Age", "Base Salary", "Total Comp", "POS", "MINS", "Games", "Starts", "Season", "Goals", "Assists", "Shots", "Shots On Goal", "SOG%","Home Goals", "Away Goals", "Goals/90", "Scoring Percent", "Home Assists", "Away Assists","Assists/90", "Fouls", "Fouls Suffered", "Offsides", "Yellow Cards", "Red Cards", "Shots Faced", "Saves", "Goals Against", "Goals Against Avg", "Shoutouts", "Save Pct")
+
 Players_all_17_20_Reg_Nation_Search <- Players_all_17_20_Reg_Nation_Search[, col_order]
 
 
-datatable(Players_all_17_20_Reg_Nation_Search)
+Players_all_17_20_Reg_Nation_Search$Year <- as.factor(Players_all_17_20_Reg_Nation_Search$Year)
+
+Players_all_17_20_Reg_Nation_Search <- rename(Players_all_17_20_Reg_Nation_Search, Country = country_name)
+
+datatable(Players_all_17_20_Reg_Nation_Search, options = list(autoWidth = TRUE), filter = list(position = 'top', clear = FALSE, plain = TRUE))
+
+
+```
+
+
+Player Data Source
+=============================================================================
+
+Row {data-height=450}
+-------------------------------------------------------------------------
+```{r}
+write.csv(Players_all_17_20_Reg_Nation_Search, file = "player_data.csv", row.names = FALSE, na = "NA")
+
+```
+
+### Data Sources:  
+
+The data is from three sources: 
+
+[Kaggle](https://www.kaggle.com/datasets/josephvm/major-league-soccer-dataset)
+
+[MLSPA](https://mlsplayers.org/resources/salary-guide)
+
+[Fbref 2020](https://fbref.com/en/comps/22/2020/wages/2020-Major-League-Soccer-Wages)
+
+[Fbref 2019](https://fbref.com/en/comps/22/2019/wages/2019-Major-League-Soccer-Wages)
+
+[Fbref 2018](https://fbref.com/en/comps/22/2018/wages/2018-Major-League-Soccer-Wages)
+
+[Fbref 2017](https://fbref.com/en/comps/22/2017/wages/2017-Major-League-Soccer-Wages)
+
+> Sources: Kaggle.com, MLS Player Association (MLSPA) Annual Salary Report, and Fbref for nationality information. 
+
+
+Inputs {.bottom}
+-----------------------------------------------------------------------
+
+```{r download}
+downloadButton("player_data",label="Download Player Data", class = "butt1")
+ 
+downloadHandler(filename= "player_data",
+     content=function(file){write.csv(Players_all_17_20_Reg_Nation_Search, file="player_data.csv", na="NA")
+     },
+   contentType="text/csv")
 
 ```
 
