@@ -820,6 +820,10 @@ The data is from three sources:
 
 > Sources: Kaggle.com, MLS Player Association (MLSPA) Annual Salary Report, and Fbref for nationality information. 
 
+A copy of my data can be found at:
+[Player_Data](https://github.com/dazat/MLS_Soccer/blob/main/Script/player_data.csv)
+
+*I am sorry the button below does not currently work*
 
 Inputs {.bottom}
 -----------------------------------------------------------------------
